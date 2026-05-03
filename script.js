@@ -1,4 +1,4 @@
-const pdfUrl = "presentation.pdf";
+const pdfUrl = "./presentation.pdf";
 
 const canvas = document.getElementById("pdf-canvas");
 const ctx = canvas.getContext("2d");
@@ -13,11 +13,15 @@ let totalPages = 0;
 let isRendering = false;
 let pendingPage = null;
 
+canvas.style.display = "none";
+
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 async function loadPdf() {
   try {
+    loadingEl.textContent = "PDF yükleniyor...";
+
     const loadingTask = pdfjsLib.getDocument(pdfUrl);
     pdfDoc = await loadingTask.promise;
 
@@ -25,10 +29,14 @@ async function loadPdf() {
     totalPagesEl.textContent = totalPages;
 
     loadingEl.style.display = "none";
+    canvas.style.display = "block";
 
     renderPage(currentPage);
   } catch (error) {
-    loadingEl.textContent = "PDF yüklenemedi. Dosya adını ve yolunu kontrol et.";
+    loadingEl.style.display = "block";
+    loadingEl.textContent =
+      "PDF yüklenemedi. Live Server ile açtığından ve PDF adının presentation.pdf olduğundan emin ol.";
+
     console.error("PDF yükleme hatası:", error);
   }
 }
@@ -37,7 +45,6 @@ async function renderPage(pageNumber) {
   isRendering = true;
 
   const page = await pdfDoc.getPage(pageNumber);
-
   const viewport = page.getViewport({ scale: 1 });
 
   const screenWidth = window.innerWidth;
@@ -53,21 +60,19 @@ async function renderPage(pageNumber) {
   canvas.width = scaledViewport.width;
   canvas.height = scaledViewport.height;
 
-  const renderContext = {
+  await page.render({
     canvasContext: ctx,
     viewport: scaledViewport,
-  };
-
-  await page.render(renderContext).promise;
+  }).promise;
 
   currentPageEl.textContent = currentPage;
 
   isRendering = false;
 
   if (pendingPage !== null) {
-    const nextPage = pendingPage;
+    const nextPageNumber = pendingPage;
     pendingPage = null;
-    renderPage(nextPage);
+    renderPage(nextPageNumber);
   }
 }
 
@@ -106,27 +111,59 @@ document.addEventListener("keydown", (event) => {
 
 // Mouse kontrolleri
 document.addEventListener("mousedown", (event) => {
-  // Sol click: ileri
-  if (event.button === 0) {
-    nextPage();
-  }
+  const screenMiddle = window.innerWidth / 2;
 
-  // Sağ click: geri
+  // Sağ click her zaman geri
   if (event.button === 2) {
     previousPage();
+    return;
+  }
+
+  // Sol click:
+  // Ekranın sol yarısı geri, sağ yarısı ileri
+  if (event.button === 0) {
+    if (event.clientX < screenMiddle) {
+      previousPage();
+    } else {
+      nextPage();
+    }
   }
 });
+
+// Mobil dokunma kontrolleri
+document.addEventListener(
+  "touchstart",
+  (event) => {
+    const touch = event.touches[0];
+    const screenMiddle = window.innerWidth / 2;
+
+    if (touch.clientX < screenMiddle) {
+      previousPage();
+    } else {
+      nextPage();
+    }
+  },
+  { passive: true }
+);
 
 // Sağ click menüsünü kapat
 document.addEventListener("contextmenu", (event) => {
   event.preventDefault();
 });
 
-// Ekran boyutu değişirse mevcut sayfayı tekrar ölçekle
+// Ekran boyutu veya yön değişirse mevcut sayfayı tekrar ölçekle
 window.addEventListener("resize", () => {
   if (pdfDoc) {
     queueRenderPage(currentPage);
   }
+});
+
+window.addEventListener("orientationchange", () => {
+  setTimeout(() => {
+    if (pdfDoc) {
+      queueRenderPage(currentPage);
+    }
+  }, 300);
 });
 
 loadPdf();
