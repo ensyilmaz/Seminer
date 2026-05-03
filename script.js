@@ -13,6 +13,9 @@ let totalPages = 0;
 let isRendering = false;
 let pendingPage = null;
 
+// Mobilde touch sonrası gelen sahte mouse eventini engellemek için
+let lastTouchTime = 0;
+
 canvas.style.display = "none";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -98,6 +101,16 @@ function previousPage() {
   queueRenderPage(currentPage);
 }
 
+function handleScreenNavigation(xPosition) {
+  const screenMiddle = window.innerWidth / 2;
+
+  if (xPosition < screenMiddle) {
+    previousPage();
+  } else {
+    nextPage();
+  }
+}
+
 // Klavye kontrolleri
 document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight") {
@@ -111,7 +124,12 @@ document.addEventListener("keydown", (event) => {
 
 // Mouse kontrolleri
 document.addEventListener("mousedown", (event) => {
-  const screenMiddle = window.innerWidth / 2;
+  const now = Date.now();
+
+  // Mobilde touch eventinden hemen sonra gelen mouse eventini yok say
+  if (now - lastTouchTime < 500) {
+    return;
+  }
 
   // Sağ click her zaman geri
   if (event.button === 2) {
@@ -119,14 +137,9 @@ document.addEventListener("mousedown", (event) => {
     return;
   }
 
-  // Sol click:
-  // Ekranın sol yarısı geri, sağ yarısı ileri
+  // Sol click: ekranın sol yarısı geri, sağ yarısı ileri
   if (event.button === 0) {
-    if (event.clientX < screenMiddle) {
-      previousPage();
-    } else {
-      nextPage();
-    }
+    handleScreenNavigation(event.clientX);
   }
 });
 
@@ -134,14 +147,10 @@ document.addEventListener("mousedown", (event) => {
 document.addEventListener(
   "touchstart",
   (event) => {
-    const touch = event.touches[0];
-    const screenMiddle = window.innerWidth / 2;
+    lastTouchTime = Date.now();
 
-    if (touch.clientX < screenMiddle) {
-      previousPage();
-    } else {
-      nextPage();
-    }
+    const touch = event.touches[0];
+    handleScreenNavigation(touch.clientX);
   },
   { passive: true }
 );
