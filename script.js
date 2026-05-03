@@ -13,8 +13,8 @@ let totalPages = 0;
 let isRendering = false;
 let pendingPage = null;
 
-// Mobilde touch sonrası gelen sahte mouse eventini engellemek için
-let lastTouchTime = 0;
+// Aynı dokunuş/tıklama kısa sürede tekrar gelirse engellemek için
+let lastNavigationTime = 0;
 
 canvas.style.display = "none";
 
@@ -101,7 +101,20 @@ function previousPage() {
   queueRenderPage(currentPage);
 }
 
+function canNavigateNow() {
+  const now = Date.now();
+
+  if (now - lastNavigationTime < 350) {
+    return false;
+  }
+
+  lastNavigationTime = now;
+  return true;
+}
+
 function handleScreenNavigation(xPosition) {
+  if (!canNavigateNow()) return;
+
   const screenMiddle = window.innerWidth / 2;
 
   if (xPosition < screenMiddle) {
@@ -114,51 +127,48 @@ function handleScreenNavigation(xPosition) {
 // Klavye kontrolleri
 document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight") {
+    if (!canNavigateNow()) return;
     nextPage();
   }
 
   if (event.key === "ArrowLeft") {
+    if (!canNavigateNow()) return;
     previousPage();
   }
 });
 
-// Mouse kontrolleri
-document.addEventListener("mousedown", (event) => {
-  const now = Date.now();
-
-  // Mobilde touch eventinden hemen sonra gelen mouse eventini yok say
-  if (now - lastTouchTime < 500) {
-    return;
-  }
-
-  // Sağ click her zaman geri
-  if (event.button === 2) {
+// Mouse + mobil dokunma kontrolleri
+document.addEventListener("pointerup", (event) => {
+  // Mouse sağ click: geri
+  if (event.pointerType === "mouse" && event.button === 2) {
+    if (!canNavigateNow()) return;
     previousPage();
     return;
   }
 
-  // Sol click: ekranın sol yarısı geri, sağ yarısı ileri
-  if (event.button === 0) {
+  // Mouse sol click, mobil touch ve tablet kalem dokunuşu
+  if (
+    event.pointerType === "mouse" ||
+    event.pointerType === "touch" ||
+    event.pointerType === "pen"
+  ) {
     handleScreenNavigation(event.clientX);
   }
 });
-
-// Mobil dokunma kontrolleri
-document.addEventListener(
-  "touchstart",
-  (event) => {
-    lastTouchTime = Date.now();
-
-    const touch = event.touches[0];
-    handleScreenNavigation(touch.clientX);
-  },
-  { passive: true }
-);
 
 // Sağ click menüsünü kapat
 document.addEventListener("contextmenu", (event) => {
   event.preventDefault();
 });
+
+// Mobilde çift dokunma zoom / ghost click davranışlarını azaltır
+document.addEventListener(
+  "touchend",
+  (event) => {
+    event.preventDefault();
+  },
+  { passive: false }
+);
 
 // Ekran boyutu veya yön değişirse mevcut sayfayı tekrar ölçekle
 window.addEventListener("resize", () => {

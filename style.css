@@ -12,6 +12,8 @@ body {
   background: #111;
   font-family: Arial, sans-serif;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
 }
 
 #viewer {
@@ -23,6 +25,9 @@ body {
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 #pdf-canvas {
@@ -30,6 +35,9 @@ body {
   max-height: 100vh;
   display: block;
   background: white;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 #page-info {
@@ -43,6 +51,7 @@ body {
   font-size: 14px;
   z-index: 10;
   opacity: 0.65;
+  pointer-events: none;
 }
 
 #loading {
@@ -50,4 +59,5 @@ body {
   color: white;
   font-size: 18px;
   z-index: 20;
+  pointer-events: none;
 }
